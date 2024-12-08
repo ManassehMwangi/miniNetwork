@@ -3,7 +3,7 @@ from mininet.node import Controller, RemoteController, OVSKernelSwitch
 from mininet.cli import CLI
 from mininet.log import setLogLevel, info
 from mininet.link import TCLink
-from mininet.term import makeTerm
+from mininet.nodelib import NAT
 
 def createNetwork():
     net = Mininet(controller=RemoteController, switch=OVSKernelSwitch, link=TCLink)
@@ -33,12 +33,13 @@ def createNetwork():
     net.build()
     net.start()
 
-    # Open xterm sessions
-    info('*** Opening xterm sessions\n')
-    net.terms += makeTerm(c0)
-    net.terms += makeTerm(client)
-    net.terms += makeTerm(server1)
-    net.terms += makeTerm(server2)
+    # Open xterm for controller
+    info('*** Opening xterm for controller\n')
+    net.terms += net.startTerms([c0])
+
+    # Open xterms for hosts
+    info('*** Opening xterms for hosts\n')
+    net.terms += net.startTerms([client, server1, server2])
 
     # Run CLI
     CLI(net)
