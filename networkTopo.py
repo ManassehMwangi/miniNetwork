@@ -1,5 +1,5 @@
 from mininet.net import Mininet
-from mininet.node import Controller, OVSKernelSwitch, RemoteController
+from mininet.node import Controller, RemoteController, OVSKernelSwitch
 from mininet.cli import CLI
 from mininet.log import setLogLevel, info
 
@@ -26,7 +26,10 @@ def createNetworkTopology():
     c0.start()
     s1.start([c0])
 
+    info('*** Running CLI\n')
     CLI(net)
+
+    info('*** Stopping network')
     net.stop()
 
 if __name__ == '__main__':

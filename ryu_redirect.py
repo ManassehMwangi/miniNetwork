@@ -3,7 +3,7 @@ from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_3
-from ryu.lib.packet import packet, ethernet, ether_types, arp, ipv4, tcp
+from ryu.lib.packet import packet, ethernet, ether_types, ipv4, tcp
 
 class RedirectController(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -61,22 +61,27 @@ class RedirectController(app_manager.RyuApp):
         dpid = datapath.id
         self.mac_to_port.setdefault(dpid, {})
 
+        self.logger.info("packet in %s %s %s %s", dpid, src, dst, in_port)
+
         # Learn a mac address to avoid FLOOD next time.
         self.mac_to_port[dpid][src] = in_port
 
-        if dst in self.mac_to_port[dpid]:
-            out_port = self.mac_to_port[dpid][dst]
-        else:
-            out_port = ofproto.OFPP_FLOOD
-
-        actions = [parser.OFPActionOutput(out_port)]
-
-        # Redirect traffic from client to Server2
-        ip_pkt = pkt.get_protocol(ipv4.ipv4)
-        if ip_pkt and ip_pkt.src == '10.0.1.5' and ip_pkt.dst == '10.0.1.2':
-            actions = [parser.OFPActionSetField(eth_dst='00:00:00:00:00:02'),
-                       parser.OFPActionSetField(ipv4_dst='10.0.1.3'),
-                       parser.OFPActionOutput(self.mac_to_port[dpid]['00:00:00:00:00:02'])]
+        if eth.ethertype == ether_types.ETH_TYPE_IP:
+            ip = pkt.get_protocol(ipv4.ipv4)
+            if ip.dst == '10.0.1.2':  # If destination is Server1
+                # Redirect to Server2
+                actions = [parser.OFPActionSetField(ipv4_dst='10.0.1.3'),
+                           parser.OFPActionSetField(eth_dst='00:00:00:00:00:02'),
+                           parser.OFPActionOutput(self.mac_to_port[dpid]['00:00:00:00:00:02'])]
+                match = parser.OFPMatch(in_port=in_port, eth_type=ether_types.ETH_TYPE_IP,
+                                        ipv4_dst='10.0.1.2')
+                self.add_flow(datapath, 1, match, actions, idle_timeout=5)
+            else:
+                if dst in self.mac_to_port[dpid]:
+                    out_port = self.mac_to_port[dpid][dst]
+                else:
+                    out_port = ofproto.OFPP_FLOOD
+                actions = [parser.OFPActionOutput(out_port)]
 
         # Install a flow to avoid packet_in next time
         if out_port != ofproto.OFPP_FLOOD:

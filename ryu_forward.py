@@ -3,7 +3,7 @@ from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_3
-from ryu.lib.packet import packet, ethernet, ether_types, arp, ipv4, tcp
+from ryu.lib.packet import packet, ethernet, ether_types, ipv4, tcp
 
 class ForwardingController(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -60,6 +60,8 @@ class ForwardingController(app_manager.RyuApp):
 
         dpid = datapath.id
         self.mac_to_port.setdefault(dpid, {})
+
+        self.logger.info("packet in %s %s %s %s", dpid, src, dst, in_port)
 
         # Learn a mac address to avoid FLOOD next time.
         self.mac_to_port[dpid][src] = in_port
